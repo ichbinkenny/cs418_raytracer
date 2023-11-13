@@ -77,8 +77,8 @@ pub trait RayShape {
 
     fn get_center(&self) -> Point;
     fn get_shape(&self) -> ShapeType;
-    fn get_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> Rgba<u8>;
-    fn get_color_without_sun(&self) -> Rgba<u8>;
+    fn get_linear_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4];
+    fn get_color_without_sun(&self) -> [f64; 4];
     fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)>;
     fn get_normal_at_intersection(&self, intersection_point: &Point) -> Vector3;
 }

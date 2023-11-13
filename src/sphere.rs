@@ -5,7 +5,7 @@ use crate::{shapes::{Point, ShapeType, RayShape}, ray::Ray, sun::Sun, vector3::V
 pub struct Sphere {
     center: Point, 
     radius: f64,
-    color: Rgba<u8>,
+    color: [f64; 4],
 }
 
 impl RayShape for Sphere {
@@ -47,9 +47,10 @@ impl RayShape for Sphere {
         Some((t, c_double_prime.to_point()))
     }
 
-    fn get_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> Rgba<u8> {
-        // Setup our lambert power :D
-        let lambert_power = 1.0;
+    ///
+    /// Returns the current pixel color in linear RGB. Needs to be converted to sRGB.
+    /// 
+    fn get_linear_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
         // Find the point we have hit on the sphere. This is simply the origin of the ray + its direction times by the distance we returned.
         let collision_point = ray.get_origin() + (ray.get_direction() * intersection_point.to_vec().magnitude());
         // Get the surface normal, like usual.
@@ -58,14 +59,15 @@ impl RayShape for Sphere {
         let light_direction = sun.light_direction.normalize();
         // get lambert color
         let lambert = normal.dot(light_direction).max(0.0);
+        println!("Lambert: {}", lambert);
         // return color
-        let new_red = (((self.color[0] as f64 * sun.get_color()[0] as f64) * lambert)).min(255.0) as u8;
-        let new_green = (((self.color[1] as f64 * sun.get_color()[1] as f64) * lambert)).min(255.0) as u8; 
-        let new_blue = (((self.color[2] as f64 * sun.get_color()[2] as f64) * lambert)).min(255.0) as u8;
-        Rgba([new_red, new_green, new_blue, self.color[3]])
+        let new_red = (self.color[0] * sun.get_color()[0] * lambert).min(1.0);
+        let new_green = (self.color[1] * sun.get_color()[1] * lambert).min(1.0); 
+        let new_blue = (self.color[2] * sun.get_color()[2] * lambert).min(1.0);
+        [new_red, new_green, new_blue, self.color[3]]
     }
 
-    fn get_color_without_sun(&self) -> Rgba<u8> {
+    fn get_color_without_sun(&self) -> [f64; 4] {
         self.color
     }
 
@@ -75,7 +77,7 @@ impl RayShape for Sphere {
 }
 
 impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: Rgba<u8>) -> Self {
+    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4]) -> Self {
         Self {
             center: Point::new(x, y, z),
             radius,
