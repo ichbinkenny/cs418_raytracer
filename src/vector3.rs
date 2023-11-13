@@ -1,5 +1,7 @@
 use std::ops::{Add, Sub, Mul};
 
+use crate::shapes::Point;
+
 #[derive(Copy, Clone, Debug)]
 pub struct Vector3 {
     pub x: f64,
@@ -32,6 +34,14 @@ impl Vector3 {
     pub fn normalize(&self) -> Vector3 {
         let mag = self.magnitude();
         Vector3::new(self.x / mag, self.y / mag, self.z / mag)
+    }
+
+    pub fn to_point(&self) -> Point {
+        Point::new(self.x, self.y, self.z)
+    }
+
+    pub fn negate(&self) -> Vector3 {
+        Vector3::new(-self.x, -self.y, -self.z)
     }
 }
 

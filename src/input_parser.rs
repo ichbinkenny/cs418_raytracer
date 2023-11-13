@@ -72,7 +72,8 @@ impl RaytraceInputParser {
     }
 
     fn parse_command(&mut self, command: &str) {
-        let tokens: Vec<&str> = command.split(' ').collect();
+        let tokens: Vec<&str> = command.split(' ').filter(|e| { *e != "" }).collect();
+        println!("Command: {:?}", tokens);
         if tokens.len() > 0 {
             match tokens[0].to_ascii_lowercase().as_str() {
                 "png" => self.create_png_image(u32::from_str_radix(tokens[1], 10).unwrap(), u32::from_str_radix(tokens[2], 10).unwrap(), tokens[3]),

@@ -1,8 +1,10 @@
 mod image_manip;
 mod input_parser;
 mod shapes;
+mod sphere;
 mod ray;
 mod vector3;
+mod sun;
 
 use std::env::args;
 use input_parser::RaytraceInputParser;

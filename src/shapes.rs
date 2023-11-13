@@ -2,6 +2,7 @@ use std::ops::{Add, Sub};
 
 use image::{Rgba};
 use crate::ray::Ray;
+use crate::sun::Sun;
 use crate::vector3::Vector3;
 
 #[derive(Copy, Clone, Debug)]
@@ -22,6 +23,10 @@ impl Point {
 
     pub fn to_vec(&self) -> Vector3 {
         Vector3::new(self.x, self.y, self.z)
+    }
+
+    pub fn dot(&self, other: Vector3) -> f64 {
+        self.x * other.x + self.y * other.y + self.z * other.z
     }
 }
 
@@ -62,7 +67,7 @@ impl Sub<Point> for Vector3 {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum ShapeType {
     Sphere,
     Plane,
@@ -72,81 +77,40 @@ pub trait RayShape {
 
     fn get_center(&self) -> Point;
     fn get_shape(&self) -> ShapeType;
-    fn get_color(&self) -> Rgba<u8>;
-    fn get_intersection(&self, ray: &Ray) -> Result<(f64, Point), ()>;
+    fn get_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> Rgba<u8>;
+    fn get_color_without_sun(&self) -> Rgba<u8>;
+    fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)>;
+    fn get_normal_at_intersection(&self, intersection_point: &Point) -> Vector3;
 }
 
-pub struct Sphere {
-    center: Point, 
-    radius: f64,
-    color: Rgba<u8>,
-}
+// pub struct Plane {
+//     normal: Vector3,
+//     point: Point, // TODO fix with proper name
+//     color: Rgba<u8>,
+// }
 
-impl RayShape for Sphere {
-    fn get_center(&self) -> Point {
-        self.center
-    }
-    fn get_shape(&self) -> ShapeType {
-        ShapeType::Sphere
-    }
-    fn get_intersection(&self, ray: &Ray) -> Result<(f64, Point), ()> {
-        let c_minus_r = Vector3::new(self.center.x - ray.get_origin().x, self.center.y - ray.get_origin().y, self.center.z - ray.get_origin().z);
-        let inside = c_minus_r.magnitude().sqrt() < self.radius.powf(2.0);
-        let t_c = c_minus_r.dot(ray.get_direction()) / ray.get_direction().magnitude();
-        if !inside && t_c < 0f64 {
-            return Err(());
-        }
-        let d_squared = (ray.get_origin() + (ray.get_direction() * t_c) - self.center).to_vec().magnitude().powf(2.0);
-        if !inside && self.radius.powi(2) < d_squared {
-            return Err(());
-        }
-        // TODO
-        Err(())
-    }
+// impl RayShape for Plane {
+//     fn get_center(&self) -> Point {
+//         self.point
+//     }
+//     fn get_shape(&self) -> ShapeType {
+//         ShapeType::Plane
+//     }
+//     fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)> {
+//         None
+//     }
 
-    fn get_color(&self) -> Rgba<u8> {
-        self.color
-    }
-}
+//     fn get_color(&self) -> Rgba<u8> {
+//         self.color
+//     }
+// }
 
-impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: Rgba<u8>) -> Self {
-        Self {
-            center: Point::new(x, y, z),
-            radius,
-            color,
-        }
-    }
-}
-
-pub struct Plane {
-    normal: Vector3,
-    point: Point, // TODO fix with proper name
-    color: Rgba<u8>,
-}
-
-impl RayShape for Plane {
-    fn get_center(&self) -> Point {
-        self.point
-    }
-    fn get_shape(&self) -> ShapeType {
-        ShapeType::Plane
-    }
-    fn get_intersection(&self, ray: &Ray) -> Result<(f64, Point), ()> {
-        Err(()) 
-    }
-
-    fn get_color(&self) -> Rgba<u8> {
-        self.color
-    }
-}
-
-impl Plane {
-    pub fn new(x: f64, y: f64, z: f64, d: f64, color: Rgba<u8>) -> Self {
-        Self{
-            normal: Vector3::new(x, y, z),
-            point: Point::new(-d / x, 0.0, 0.0),
-            color
-        }
-    } 
-}
+// impl Plane {
+//     pub fn new(x: f64, y: f64, z: f64, d: f64, color: Rgba<u8>) -> Self {
+//         Self{
+//             normal: Vector3::new(x, y, z),
+//             point: Point::new(-d / x, 0.0, 0.0),
+//             color
+//         }
+//     } 
+// }
