@@ -20,6 +20,7 @@ pub struct RaytraceImage {
     up_direction: Vector3,
     right_direction: Vector3,
     pixels: HashMap<(usize, usize), Rgba<u8>>,
+    exposure_value: f64,
 }
 
 impl RaytraceImage {
@@ -35,6 +36,7 @@ impl RaytraceImage {
             up_direction: Vector3::new(0.0, 1.0, 0.0).normalize(),
             right_direction: Vector3::new(1.0, 0.0, 0.0).normalize(),
             pixels: HashMap::new(),
+            exposure_value: 1.0,
         }
     }
 
@@ -68,25 +70,25 @@ impl RaytraceImage {
                                 let mut color = [0.0, 0.0, 0.0, 1.0];
                                 self.pixels.insert((x as usize, y as usize), Rgba([0, 0, 0, 255]));
                                 for sun in &self.suns {
-                                    let next_color = shape.get_linear_color(&ray, &sun, &data.1);
-                                    color = [color[0] + next_color[0], color[1] + next_color[1], color[2] + next_color[2], color[3]];
+                                    let next_color = shape.get_linear_color(&self.shapes, &ray, &sun, &data.1);
+                                    color = [color[0] + next_color[0], color[1] + next_color[1], color[2] + next_color[2], next_color[3] + color[3]];
                                 }
                                 if self.suns.len() > 0 {
-                                    color = [(color[0] / self.suns.len() as f64), (color[1]  / self.suns.len() as f64), (color[2] / self.suns.len() as f64), color[3]];
+                                    color = [(color[0] / self.suns.len() as f64), (color[1]  / self.suns.len() as f64), (color[2] / self.suns.len() as f64), color[3] / self.suns.len() as f64];
                                 }
-                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_sRGB(color));
+                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_sRGB(color, self.exposure_value));
                                 
                             } else if data.0 < smallest_distance {
                                 smallest_distance = data.0;
-                                let mut color = [0.0, 0.0, 0.0, 255.0];
+                                let mut color = [0.0, 0.0, 0.0, 1.0];
                                 for sun in &self.suns {
-                                    let next_color = shape.get_linear_color(&ray, &sun, &data.1);
-                                    color = [color[0] + next_color[0], color[1] + next_color[1], color[2] + next_color[2], color[3]];
+                                    let next_color = shape.get_linear_color(&self.shapes, &ray, &sun, &data.1);
+                                    color = [color[0] + next_color[0], color[1] + next_color[1], color[2] + next_color[2], next_color[3] + color[3]];
                                 }
                                 if self.suns.len() > 0 {
-                                    color = [(color[0] / self.suns.len() as f64), (color[1] / self.suns.len() as f64), (color[2] / self.suns.len() as f64), color[3]];
+                                    color = [(color[0] / self.suns.len() as f64), (color[1]  / self.suns.len() as f64), (color[2] / self.suns.len() as f64), color[3] / self.suns.len() as f64];
                                 }
-                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_sRGB(color));
+                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_sRGB(color, self.exposure_value));
                             }
                         },
                         None => {},
@@ -112,7 +114,7 @@ impl RaytraceImage {
         if y > self.image.height() {
             y_pos = self.image.height();
         }
-        let converted_color = Rgba([color[0], color[1], color[2], color[3]]);
+        let converted_color = Rgba([color[0].min(255), color[1].min(255), color[2].min(255), color[3].min(255)]);
         self.image.put_pixel(x_pos, y_pos, converted_color);
     }
 
@@ -134,24 +136,28 @@ impl RaytraceImage {
         self.suns.push(sun);
     }
 
-    fn linear_color_to_sRGB(linear_color: [f64; 4]) -> Rgba<u8> {
-        let mut output_color = [0.0, 0.0, 0.0, 255.0]; 
+    pub fn set_exposure(&mut self, exposure_value: f64) {
+        self.exposure_value = exposure_value;
+    }
+
+    fn linear_color_to_sRGB(linear_color: [f64; 4], exposure_value: f64) -> Rgba<u8> {
+        let mut output_color = [0.0, 0.0, 0.0, 0.0]; 
         if linear_color[0] > LINEAR_SRGB_CUTOFF {
-            output_color[0] = 1.055 * (linear_color[0].powf(1.0 / 2.4)) - 0.055;
+            output_color[0] = (1.055 * (linear_color[0].powf(1.0 / 2.4)) - 0.055) * exposure_value;
         } else {
-            output_color[0] = 12.92 * linear_color[0];
+            output_color[0] = 12.92 * linear_color[0] * exposure_value;
         }
         if linear_color[1] > LINEAR_SRGB_CUTOFF {
-            output_color[1] = 1.055 * (linear_color[1].powf(1.0 / 2.4)) - 0.055;
+            output_color[1] = (1.055 * (linear_color[1].powf(1.0 / 2.4)) - 0.055) * exposure_value;
         } else {
-            output_color[1] = 12.92 * linear_color[1];
+            output_color[1] = 12.92 * linear_color[1] * exposure_value;
         }
         if linear_color[2] > LINEAR_SRGB_CUTOFF {
-            output_color[2] = 1.055 * (linear_color[2].powf(1.0 / 2.4)) - 0.055;
+            output_color[2] = (1.055 * (linear_color[2].powf(1.0 / 2.4)) - 0.055) * exposure_value;
         } else {
-            output_color[2] = 12.92 * linear_color[2];
+            output_color[2] = 12.92 * linear_color[2] * exposure_value;
         }
-        let output_color_u8 = [(output_color[0] * 255.0) as u8, (output_color[1] * 255.0) as u8, (output_color[2] * 255.0) as u8, output_color[3] as u8];
+        let output_color_u8 = [(output_color[0] * 255.0) as u8, (output_color[1] * 255.0) as u8, (output_color[2] * 255.0) as u8, 255];
         println!("Converted: {:?} to sRGB: {:x?}", linear_color, output_color_u8);
         Rgba(output_color_u8)
     } 

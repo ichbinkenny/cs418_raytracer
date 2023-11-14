@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul};
+use std::ops::{Add, Sub, Mul, Neg};
 
 use crate::shapes::Point;
 
@@ -78,5 +78,12 @@ impl Mul<Vector3> for f64 {
     type Output = Vector3;
     fn mul(self, other: Vector3) -> Vector3 {
         Vector3::new(self * other.x, self * other.y, self * other.z)
+    }
+}
+
+impl Neg for Vector3 {
+    type Output = Vector3;
+    fn neg(self) -> Vector3 {
+        Vector3::new(-self.x, -self.y, -self.z)
     }
 }

@@ -4,8 +4,8 @@ use std::f64;
 use crate::vector3::Vector3;
 
 pub struct Ray {
-    origin: Point,
-    direction: Vector3,
+    pub origin: Point,
+    pub direction: Vector3,
 }
 
 impl Ray {

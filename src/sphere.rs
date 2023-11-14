@@ -1,7 +1,9 @@
 use image::Rgba;
+use core::any::Any;
 
-use crate::{shapes::{Point, ShapeType, RayShape}, ray::Ray, sun::Sun, vector3::Vector3};
+use crate::{shapes::{Point, ShapeType, RayShape, self}, ray::Ray, sun::Sun, vector3::Vector3};
 
+const MIN_COLLISION: f64 = 1.0;
 pub struct Sphere {
     center: Point, 
     radius: f64,
@@ -50,21 +52,29 @@ impl RayShape for Sphere {
     ///
     /// Returns the current pixel color in linear RGB. Needs to be converted to sRGB.
     /// 
-    fn get_linear_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
+    fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
         // Find the point we have hit on the sphere. This is simply the origin of the ray + its direction times by the distance we returned.
         let collision_point = ray.get_origin() + (ray.get_direction() * intersection_point.to_vec().magnitude());
+        let intersection_info = self.get_intersection(ray).unwrap();
         // Get the surface normal, like usual.
         let normal = self.get_normal_at_intersection(&collision_point);
         // Find l_d (light direction) from this collision point
         let light_direction = sun.light_direction.normalize();
         // get lambert color
         let lambert = normal.dot(light_direction).max(0.0);
-        println!("Lambert: {}", lambert);
+        // Create a new ray pointed back from our surface
+        let secondary_shadow_ray = Ray { origin: collision_point + (normal * MIN_COLLISION), direction: -light_direction};
+        let mut in_shadow = false;
+        //TODO SHADOWS MAN
+
         // return color
-        let new_red = (self.color[0] * sun.get_color()[0] * lambert).min(1.0);
-        let new_green = (self.color[1] * sun.get_color()[1] * lambert).min(1.0); 
-        let new_blue = (self.color[2] * sun.get_color()[2] * lambert).min(1.0);
-        [new_red, new_green, new_blue, self.color[3]]
+        if !in_shadow {
+            let new_red = (self.color[0] * sun.get_color()[0] * lambert).min(1.0);
+            let new_green = (self.color[1] * sun.get_color()[1] * lambert).min(1.0); 
+            let new_blue = (self.color[2] * sun.get_color()[2] * lambert).min(1.0);
+            return [new_red, new_green, new_blue, self.color[3]];
+        }
+        return [0.0, 0.0, 0.0, 1.0];
     }
 
     fn get_color_without_sun(&self) -> [f64; 4] {

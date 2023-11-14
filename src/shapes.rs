@@ -5,7 +5,7 @@ use crate::ray::Ray;
 use crate::sun::Sun;
 use crate::vector3::Vector3;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Point {
     pub x: f64,
     pub y: f64,
@@ -67,7 +67,7 @@ impl Sub<Point> for Vector3 {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ShapeType {
     Sphere,
     Plane,
@@ -77,7 +77,7 @@ pub trait RayShape {
 
     fn get_center(&self) -> Point;
     fn get_shape(&self) -> ShapeType;
-    fn get_linear_color(&self, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4];
+    fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4];
     fn get_color_without_sun(&self) -> [f64; 4];
     fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)>;
     fn get_normal_at_intersection(&self, intersection_point: &Point) -> Vector3;

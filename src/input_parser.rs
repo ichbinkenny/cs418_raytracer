@@ -71,6 +71,12 @@ impl RaytraceInputParser {
         }
     }
 
+    fn set_exposure(&mut self, exposure_value: f64) {
+        if let Some(mut image) = self.image.as_mut() {
+            image.set_exposure(exposure_value);
+        }
+    }
+
     fn parse_command(&mut self, command: &str) {
         let tokens: Vec<&str> = command.split(' ').filter(|e| { *e != "" }).collect();
         println!("Command: {:?}", tokens);
@@ -80,6 +86,7 @@ impl RaytraceInputParser {
                 "sphere" => self.draw_sphere(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap(), f64::from_str(tokens[4]).unwrap()),
                 "color" => self.set_color(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "sun" => self.add_sun(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
+                "expose" => self.set_exposure(f64::from_str(tokens[1]).unwrap()),
                 _ => {},
             }
         }
