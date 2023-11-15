@@ -5,6 +5,7 @@ mod sphere;
 mod ray;
 mod vector3;
 mod sun;
+mod plane;
 
 use std::env::args;
 use input_parser::RaytraceInputParser;

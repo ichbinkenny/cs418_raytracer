@@ -5,6 +5,8 @@ use crate::ray::Ray;
 use crate::sun::Sun;
 use crate::vector3::Vector3;
 
+pub const MIN_ALLOWED_COLLISION_DISTANCE: f64 = 0.000001;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Point {
     pub x: f64,
@@ -83,34 +85,3 @@ pub trait RayShape {
     fn get_normal_at_intersection(&self, intersection_point: &Point) -> Vector3;
 }
 
-// pub struct Plane {
-//     normal: Vector3,
-//     point: Point, // TODO fix with proper name
-//     color: Rgba<u8>,
-// }
-
-// impl RayShape for Plane {
-//     fn get_center(&self) -> Point {
-//         self.point
-//     }
-//     fn get_shape(&self) -> ShapeType {
-//         ShapeType::Plane
-//     }
-//     fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)> {
-//         None
-//     }
-
-//     fn get_color(&self) -> Rgba<u8> {
-//         self.color
-//     }
-// }
-
-// impl Plane {
-//     pub fn new(x: f64, y: f64, z: f64, d: f64, color: Rgba<u8>) -> Self {
-//         Self{
-//             normal: Vector3::new(x, y, z),
-//             point: Point::new(-d / x, 0.0, 0.0),
-//             color
-//         }
-//     } 
-// }

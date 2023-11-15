@@ -1,10 +1,10 @@
-use std::borrow::BorrowMut;
 use std::collections::HashMap;
 
 use image::{Rgba, RgbaImage, Rgb};
-use crate::shapes::RayShape;
+use crate::shapes::{RayShape, Point};
 use crate::ray::Ray;
 use crate::sphere::Sphere;
+use crate::plane::Plane;
 use crate::vector3::Vector3;
 use crate::sun::Sun;
 
@@ -19,6 +19,7 @@ pub struct RaytraceImage {
     forward_direction: Vector3,
     up_direction: Vector3,
     right_direction: Vector3,
+    ray_origin: Point,
     pixels: HashMap<(usize, usize), Rgba<u8>>,
     exposure_value: f64,
 }
@@ -35,6 +36,7 @@ impl RaytraceImage {
             forward_direction: Vector3::new(0.0, 0.0, -1.0),
             up_direction: Vector3::new(0.0, 1.0, 0.0).normalize(),
             right_direction: Vector3::new(1.0, 0.0, 0.0).normalize(),
+            ray_origin: Point::new(0.0, 0.0, 0.0),
             pixels: HashMap::new(),
             exposure_value: 1.0,
         }
@@ -57,7 +59,7 @@ impl RaytraceImage {
                 for i in 0..self.shapes.len()  {
                     let s_x = (2.0 * x as f64 - self.image.width() as f64) / max;
                     let s_y = (self.image.height() as f64 - (2.0 * y as f64)) / max;
-                    let ray = Ray::new(self.forward_direction, self.up_direction, self.right_direction, s_x, s_y);
+                    let ray = Ray::new(self.forward_direction, self.up_direction, self.right_direction, self.ray_origin, s_x, s_y);
                     // For each shape at this pixel,
                     // Get the distance to intersection
                     // Choose the smallest intersection to be the color
@@ -136,8 +138,28 @@ impl RaytraceImage {
         self.suns.push(sun);
     }
 
+    pub fn add_plane(&mut self, x: f64, y: f64, z: f64, d: f64) {
+        let plane = Plane::new(x, y, z, d, self.current_color);
+        self.shapes.push(Box::new(plane));
+    }
+
     pub fn set_exposure(&mut self, exposure_value: f64) {
         self.exposure_value = exposure_value;
+    }
+
+    pub fn set_eye_origin(&mut self, new_origin: &Point) {
+        self.ray_origin = *new_origin;
+    }
+
+    pub fn set_forward_direction(&mut self, new_direction: &Vector3) {
+        self.forward_direction = *new_direction;
+        self.right_direction = self.forward_direction.cross(self.up_direction).normalize();
+        self.up_direction = self.right_direction.cross(self.forward_direction).normalize();
+    }
+
+    pub fn set_up_direction(&mut self, new_direction: &Vector3) {
+        self.up_direction = (*new_direction).normalize();
+        self.right_direction = self.forward_direction.cross(self.up_direction).normalize();
     }
 
     fn linear_color_to_sRGB(linear_color: [f64; 4], exposure_value: f64) -> Rgba<u8> {
@@ -158,7 +180,7 @@ impl RaytraceImage {
             output_color[2] = 12.92 * linear_color[2] * exposure_value;
         }
         let output_color_u8 = [(output_color[0] * 255.0) as u8, (output_color[1] * 255.0) as u8, (output_color[2] * 255.0) as u8, 255];
-        println!("Converted: {:?} to sRGB: {:x?}", linear_color, output_color_u8);
+        // println!("Converted: {:?} to sRGB: {:x?}", linear_color, output_color_u8);
         Rgba(output_color_u8)
     } 
 

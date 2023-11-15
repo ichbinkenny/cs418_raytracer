@@ -9,10 +9,10 @@ pub struct Ray {
 }
 
 impl Ray {
-    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, s_x: f64, s_y: f64) -> Self {
+    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, origin: Point, s_x: f64, s_y: f64) -> Self {
         let ray_direction = forward_dir + (s_x * right_dir) + (s_y * up_dir);
         Self {
-            origin: Point::new(0.0, 0.0, 0.0),
+            origin,
             direction: ray_direction.normalize(),
         }
     }

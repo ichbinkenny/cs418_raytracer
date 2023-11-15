@@ -1,7 +1,7 @@
 use image::Rgba;
 use core::any::Any;
 
-use crate::{shapes::{Point, ShapeType, RayShape, self}, ray::Ray, sun::Sun, vector3::Vector3};
+use crate::{shapes::{Point, ShapeType, RayShape, self, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3};
 
 const MIN_COLLISION: f64 = 1.0;
 pub struct Sphere {
@@ -63,10 +63,18 @@ impl RayShape for Sphere {
         // get lambert color
         let lambert = normal.dot(light_direction).max(0.0);
         // Create a new ray pointed back from our surface
-        let secondary_shadow_ray = Ray { origin: collision_point + (normal * MIN_COLLISION), direction: -light_direction};
+        let secondary_shadow_ray = Ray { origin: collision_point, direction: light_direction};
         let mut in_shadow = false;
         //TODO SHADOWS MAN
+        for obj in objects {
+            if let Some(intersection) = obj.get_intersection(&secondary_shadow_ray) {
+                if intersection.0 < intersection_info.0 && intersection.0 > MIN_ALLOWED_COLLISION_DISTANCE {
 
+                    in_shadow = true;
+                    break;
+                }
+            }
+        }
         // return color
         if !in_shadow {
             let new_red = (self.color[0] * sun.get_color()[0] * lambert).min(1.0);
