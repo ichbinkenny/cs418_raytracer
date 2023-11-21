@@ -3,17 +3,35 @@ use std::f64;
 
 use crate::vector3::Vector3;
 
+#[derive(Copy, Clone)]
+pub enum RayLensType {
+    Standard,
+    Fisheye,
+    Panorama,
+}
+
 pub struct Ray {
     pub origin: Point,
     pub direction: Vector3,
+    pub lens_type: RayLensType,
 }
 
 impl Ray {
-    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, origin: Point, s_x: f64, s_y: f64) -> Self {
-        let ray_direction = forward_dir + (s_x * right_dir) + (s_y * up_dir);
+    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, origin: Point, s_x: f64, s_y: f64, lens_type: RayLensType) -> Self {
+        let ray_direction = match lens_type {
+            RayLensType::Standard => forward_dir + (s_x * right_dir) + (s_y * up_dir),
+            RayLensType::Fisheye => {
+                let new_f = (1.0 - s_x.powi(2) - s_y.powi(2)).sqrt() * forward_dir;
+                new_f + (s_x * right_dir) + (s_y * up_dir)
+            },
+            RayLensType::Panorama => { 
+                (s_y * up_dir) + (s_x.cos() * forward_dir) + (s_x.sin() * right_dir)
+             },
+        };
         Self {
             origin,
             direction: ray_direction.normalize(),
+            lens_type
         }
     }
     pub fn set_origin(&mut self, point: Point) {

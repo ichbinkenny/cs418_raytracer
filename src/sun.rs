@@ -9,8 +9,9 @@ pub struct Sun {
 
 impl Sun {
     pub fn new(direction: Vector3, color: [f64; 4]) -> Self {
+        println!("Direction {:?}", direction);
         Self {
-            light_direction: direction,
+            light_direction: direction.normalize(),
             light_color: color,
         }
     }

@@ -6,6 +6,8 @@ mod ray;
 mod vector3;
 mod sun;
 mod plane;
+mod triangle;
+mod bulb;
 
 use std::env::args;
 use input_parser::RaytraceInputParser;

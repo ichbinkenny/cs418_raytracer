@@ -1,13 +1,10 @@
-use image::Rgba;
-use core::any::Any;
+use crate::{shapes::{Point, ShapeType, RayShape, self, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::Bulb};
 
-use crate::{shapes::{Point, ShapeType, RayShape, self, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3};
-
-const MIN_COLLISION: f64 = 1.0;
 pub struct Sphere {
     center: Point, 
     radius: f64,
     color: [f64; 4],
+    shininess: [f64; 3],
 }
 
 impl RayShape for Sphere {
@@ -52,7 +49,7 @@ impl RayShape for Sphere {
     ///
     /// Returns the current pixel color in linear RGB. Needs to be converted to sRGB.
     /// 
-    fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
+    fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, bulbs: &Vec<Bulb>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
         // Find the point we have hit on the sphere. This is simply the origin of the ray + its direction times by the distance we returned.
         let collision_point = ray.get_origin() + (ray.get_direction() * intersection_point.to_vec().magnitude());
         let intersection_info = self.get_intersection(ray).unwrap();
@@ -63,9 +60,9 @@ impl RayShape for Sphere {
         // get lambert color
         let lambert = normal.dot(light_direction).max(0.0);
         // Create a new ray pointed back from our surface
-        let secondary_shadow_ray = Ray { origin: collision_point, direction: light_direction};
+        let secondary_shadow_ray = Ray { origin: collision_point, direction: light_direction, lens_type: ray.lens_type};
         let mut in_shadow = false;
-        //TODO SHADOWS MAN
+
         for obj in objects {
             if let Some(intersection) = obj.get_intersection(&secondary_shadow_ray) {
                 if intersection.0 < intersection_info.0 && intersection.0 > MIN_ALLOWED_COLLISION_DISTANCE {
@@ -75,11 +72,26 @@ impl RayShape for Sphere {
                 }
             }
         }
+
+        //TODO: Bulb lighting?
+        let mut bulb_color = [0.0, 0.0, 0.0, 1.0];
+        for bulb in bulbs {
+            bulb_color[0] += bulb.get_light(collision_point)[0];
+            bulb_color[1] += bulb.get_light(collision_point)[1];
+            bulb_color[2] += bulb.get_light(collision_point)[2];
+        }
+        bulb_color = bulb_color.map(|b| b / bulbs.len() as f64);
         // return color
-        if !in_shadow {
-            let new_red = (self.color[0] * sun.get_color()[0] * lambert).min(1.0);
-            let new_green = (self.color[1] * sun.get_color()[1] * lambert).min(1.0); 
-            let new_blue = (self.color[2] * sun.get_color()[2] * lambert).min(1.0);
+        if !in_shadow && bulbs.len() == 0 {
+            let new_red = self.color[0] * sun.get_color()[0] * lambert;
+            let new_green = self.color[1] * sun.get_color()[1] * lambert; 
+            let new_blue = self.color[2] * sun.get_color()[2] * lambert;
+            return [new_red, new_green, new_blue, self.color[3]];
+        }
+        else if !in_shadow {
+            let new_red = self.color[0] * sun.get_color()[0] * lambert + lambert * bulb_color[0];
+            let new_green = self.color[1] * sun.get_color()[1] * lambert + lambert * bulb_color[1]; 
+            let new_blue = self.color[2] * sun.get_color()[2] * lambert + lambert * bulb_color[2];
             return [new_red, new_green, new_blue, self.color[3]];
         }
         return [0.0, 0.0, 0.0, 1.0];
@@ -95,11 +107,12 @@ impl RayShape for Sphere {
 }
 
 impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4]) -> Self {
+    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], shininess: [f64; 3]) -> Self {
         Self {
             center: Point::new(x, y, z),
             radius,
             color,
+            shininess
         }
     }
 }
