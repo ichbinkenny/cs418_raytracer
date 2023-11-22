@@ -28,6 +28,7 @@ impl Ray {
                 (s_y * up_dir) + (s_x.cos() * forward_dir) + (s_x.sin() * right_dir)
              },
         };
+        println!("Ray position: {:?}", origin);
         Self {
             origin,
             direction: ray_direction.normalize(),

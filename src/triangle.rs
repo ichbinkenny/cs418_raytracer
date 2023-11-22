@@ -42,27 +42,41 @@ impl RayShape for Triangle {
     fn get_intersection(&self, ray: &crate::ray::Ray) -> Option<(f64, crate::shapes::Point)> {
         // lookup ray point barycentric coordinates.
         // first, find distance to hit. This is basically a fancy plane.
-        let distance = self.first_point - ray.get_origin();
-        let numerator = distance.to_vec().dot(self.normal);
-        let denominator = ray.get_direction().dot(self.normal);
-        let t = numerator / denominator;
-        if t > 0.0 {
-            let collision_point = (t * ray.get_direction() + ray.get_origin().to_vec()).to_point();
-            // We have a bit more work to do here. We need to see if the point lies on our triangle.
-            // Prescale?
-            // println!("Checking point {:?}", collision_point);
-            let first_bary = self.first_edge_vec.dot(collision_point.to_vec());
-            let second_bary = self.second_edge_vec.dot(collision_point.to_vec());
-            let third_bary = self.third_edge_vec.dot(collision_point.to_vec());
-            let bary_sum = first_bary + second_bary + third_bary;
-            // If any of our barycentric coordinates are negative, we are not in the triangle.
-            if first_bary.is_sign_negative() || second_bary.is_sign_negative() || third_bary.is_sign_negative() {
-                // println!("Invalid");
-                return None;
-            }
-            println!("First bary {:?} Second bary {:?} Third bary {:?}", first_bary, second_bary, third_bary);
-            let p_prime = (t * ray.get_direction() + ray.get_origin().to_vec()).to_point();
-            return Some((t, p_prime));
+        // let distance = self.first_point - ray.get_origin();
+        // let numerator = distance.to_vec().dot(self.normal);
+        // let denominator = ray.get_direction().dot(self.normal);
+        // let t = numerator / denominator;
+        // if t > 0.0 {
+        //     let collision_point = (t * ray.get_direction() + ray.get_origin().to_vec()).to_point();
+        //     // We have a bit more work to do here. We need to see if the point lies on our triangle.
+        //     // Prescale?
+        //     // println!("Checking point {:?}", collision_point);
+        //     let first_bary = self.first_edge_vec.dot(collision_point.to_vec()) / ;
+        //     let second_bary = self.second_edge_vec.dot(collision_point.to_vec());
+        //     let third_bary = self.third_edge_vec.dot(collision_point.to_vec());
+        //     let bary_sum = first_bary + second_bary + third_bary;
+        //     // If any of our barycentric coordinates are negative, we are not in the triangle.
+        //     if first_bary.is_sign_negative() || second_bary.is_sign_negative() || third_bary.is_sign_negative() {
+        //         // println!("Invalid");
+        //         return None;
+        //     }
+        //     println!("First bary {:?} Second bary {:?} Third bary {:?}", first_bary, second_bary, third_bary);
+        //     let p_prime = (t * ray.get_direction() + ray.get_origin().to_vec()).to_point();
+        //     return Some((t, p_prime));
+        // }
+        let v_minus_o = self.first_point - ray.get_origin();
+        let v_minus_o_dot_n = v_minus_o.to_vec().dot(self.normal);
+        let dir_dot_n = ray.get_direction().dot(self.normal);
+        let t = v_minus_o_dot_n / dir_dot_n;
+        let point = ray.get_origin() + t * ray.get_direction();
+        let vec_from_first_vert = self.first_point.to_vec() + point.to_vec();
+        let vec_from_second_vert = self.second_point.to_vec() + point.to_vec();
+        let vec_from_third_vert = self.third_point.to_vec() + point.to_vec();
+        let first_bary = vec_from_first_vert.dot(self.first_edge_vec);
+        let second_bary = vec_from_second_vert.dot(self.second_edge_vec);
+        let third_bary = vec_from_third_vert.dot(self.third_edge_vec);
+        if t > 0.0 && first_bary.is_sign_positive() && second_bary.is_sign_positive() && third_bary.is_sign_positive() {
+            return Some((t, point));
         }
         None
     }
