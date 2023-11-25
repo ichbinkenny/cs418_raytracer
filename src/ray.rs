@@ -14,6 +14,8 @@ pub struct Ray {
     pub origin: Point,
     pub direction: Vector3,
     pub lens_type: RayLensType,
+    pub generation: u32,
+    pub max_bounces: u32,
 }
 
 impl Ray {
@@ -28,11 +30,12 @@ impl Ray {
                 (s_y * up_dir) + (s_x.cos() * forward_dir) + (s_x.sin() * right_dir)
              },
         };
-        println!("Ray position: {:?}", origin);
         Self {
             origin,
             direction: ray_direction.normalize(),
-            lens_type
+            lens_type,
+            generation: 0,
+            max_bounces: 4,
         }
     }
     pub fn set_origin(&mut self, point: Point) {

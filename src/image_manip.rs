@@ -1,7 +1,10 @@
 use std::collections::HashMap;
 use std::f64::consts::E;
+use std::fs::File;
+use std::io::BufReader;
 
-use image::{Rgba, RgbaImage, Rgb};
+use image::codecs::png::PngReader;
+use image::{Rgba, RgbaImage, Rgb, DynamicImage};
 use crate::bulb::Bulb;
 use crate::shapes::{RayShape, Point};
 use crate::ray::{Ray, RayLensType};
@@ -26,6 +29,7 @@ pub struct RaytraceImage {
     pixels: HashMap<(usize, usize), Rgba<u8>>,
     exposure_value: Option<f64>,
     lens_type: RayLensType,
+    current_texture: Option<Vec<f32>>,
     texture_coord: (f64, f64),
     triangle_verticies: Vec<TriangleCoordinate>,
     bulbs: Vec<Bulb>,
@@ -50,6 +54,7 @@ impl RaytraceImage {
             pixels: HashMap::new(),
             exposure_value: None,
             lens_type: RayLensType::Standard,
+            current_texture: None,
             texture_coord: (0.0, 0.0),
             triangle_verticies: vec![],
             bulbs: vec![],
@@ -155,7 +160,7 @@ impl RaytraceImage {
     }
 
     pub fn add_sphere(&mut self, x_position: f64, y_position: f64, z_position: f64, radius: f64) {
-        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, self.shininess);
+        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, self.current_texture.clone(), self.shininess);
         self.shapes.push(Box::new(sphere));
     }
 
@@ -208,18 +213,32 @@ impl RaytraceImage {
         let mut index2 = i2;
         let mut index3 = i3;
         if i1 < 0 {
-            index1 = self.triangle_verticies.len() as i32 - i1 - 1;
+            index1 = self.triangle_verticies.len() as i32 - i1.abs() + 1;
         }
         if i2 < 0 {
-            index2 = self.triangle_verticies.len() as i32 - i2 - 1;
+            index2 = self.triangle_verticies.len() as i32 - i2.abs() + 1;
         }
         if i3 < 0 {
-            index3 = self.triangle_verticies.len() as i32 - i2 - 1;
+            index3 = self.triangle_verticies.len() as i32 - i3.abs() + 1;
         }
         let first_point = &self.triangle_verticies[index1 as usize];
         let second_point = &self.triangle_verticies[index2 as usize];
         let third_point = &self.triangle_verticies[index3 as usize];
-        self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color)));
+        self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color, self.current_texture.clone())));
+    }
+
+    pub fn set_texture(&mut self, texture_file: &str) {
+        let image_file = match std::fs::File::open(texture_file) {
+            Ok(res) => BufReader::new(res),
+            Err(_) => return,
+        };
+        match image::load(image_file, image::ImageFormat::Png) {
+            Ok(tex) => {
+                println!("Loaded texture: {}", texture_file);
+                self.current_texture = Some(tex.into_rgba32f().to_vec());
+            },
+            Err(_) => self.current_texture = None,
+        };
     }
 
     pub fn add_bulb(&mut self, x: f64, y: f64, z: f64) {

@@ -1,9 +1,12 @@
+use image::DynamicImage;
+
 use crate::{shapes::{Point, ShapeType, RayShape, self, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::Bulb};
 
 pub struct Sphere {
     center: Point, 
     radius: f64,
     color: [f64; 4],
+    texture: Option<Vec<f32>>,
     shininess: [f64; 3],
 }
 
@@ -60,7 +63,7 @@ impl RayShape for Sphere {
         // get lambert color
         let lambert = normal.dot(light_direction).max(0.0);
         // Create a new ray pointed back from our surface
-        let secondary_shadow_ray = Ray { origin: collision_point, direction: light_direction, lens_type: ray.lens_type};
+        let secondary_shadow_ray = Ray { origin: collision_point, direction: light_direction, lens_type: ray.lens_type, generation: ray.generation + 1, max_bounces: ray.max_bounces};
         let mut in_shadow = false;
 
         for obj in objects {
@@ -82,17 +85,39 @@ impl RayShape for Sphere {
         }
         bulb_color = bulb_color.map(|b| b / bulbs.len() as f64);
         // return color
-        if !in_shadow && bulbs.len() == 0 {
-            let new_red = self.color[0] * sun.get_color()[0] * lambert;
-            let new_green = self.color[1] * sun.get_color()[1] * lambert; 
-            let new_blue = self.color[2] * sun.get_color()[2] * lambert;
-            return [new_red, new_green, new_blue, self.color[3]];
-        }
-        else if !in_shadow {
-            let new_red = self.color[0] * sun.get_color()[0] * lambert + lambert * bulb_color[0];
-            let new_green = self.color[1] * sun.get_color()[1] * lambert + lambert * bulb_color[1]; 
-            let new_blue = self.color[2] * sun.get_color()[2] * lambert + lambert * bulb_color[2];
-            return [new_red, new_green, new_blue, self.color[3]];
+        match &self.texture {
+            Some(tex) => {
+                if !in_shadow && bulbs.len() == 0 {
+                    //HELP
+                    let pixel_index = ((4.0 * intersection_point.x)) as usize;
+                    let new_red = tex[pixel_index] as f64;
+                    let new_green = tex[pixel_index + 1] as f64;
+                    let new_blue = tex[pixel_index + 2] as f64;
+                    let new_alpha = tex[pixel_index + 3] as f64;
+                    return [new_red, new_green, new_blue, new_alpha];
+                }
+            },
+            None => {
+                if !in_shadow && bulbs.len() == 0 {
+                    // Get our ratio of reflected light to diffused.
+                    let mut new_red = self.color[0] * sun.get_color()[0] * (lambert * (1.0 - self.shininess[0]));
+                    let mut new_green = self.color[1] * sun.get_color()[1] * (lambert * (1.0 - self.shininess[1])); 
+                    let mut new_blue = self.color[2] * sun.get_color()[2] * (lambert * (1.0 - self.shininess[2]));
+                    let new_ray_direction = light_direction - (2.0 * normal.dot(light_direction)) * normal;
+                    let reflection_ray = Ray { origin: collision_point, direction: new_ray_direction, lens_type: ray.lens_type, generation: ray.generation + 1, max_bounces: ray.max_bounces};
+                    if reflection_ray.generation < reflection_ray.max_bounces {
+                        //TODO
+                    }
+                    return [new_red, new_green, new_blue, self.color[3]];
+                }
+                else if !in_shadow {
+                    // Get our ratio of reflected light to diffused.
+                    let new_red = self.color[0] * sun.get_color()[0] * lambert + lambert * bulb_color[0];
+                    let new_green = self.color[1] * sun.get_color()[1] * lambert + lambert * bulb_color[1]; 
+                    let new_blue = self.color[2] * sun.get_color()[2] * lambert + lambert * bulb_color[2];
+                    return [new_red, new_green, new_blue, self.color[3]];
+                }
+            }
         }
         return [0.0, 0.0, 0.0, 1.0];
     }
@@ -107,11 +132,12 @@ impl RayShape for Sphere {
 }
 
 impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], shininess: [f64; 3]) -> Self {
+    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], texture: Option<Vec<f32>>, shininess: [f64; 3]) -> Self {
         Self {
             center: Point::new(x, y, z),
             radius,
             color,
+            texture,
             shininess
         }
     }

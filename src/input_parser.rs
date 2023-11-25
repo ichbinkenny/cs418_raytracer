@@ -125,6 +125,12 @@ impl RaytraceInputParser {
         }
     }
 
+    fn set_texture(&mut self, texture_file: &str) {
+        if let Some(image) = self.image.as_mut() {
+            image.set_texture(texture_file);
+        }
+    }
+
     fn add_bulb(&mut self, x: f64, y: f64, z: f64) {
         if let Some(image) = self.image.as_mut() {
             image.add_bulb(x, y, z);
@@ -166,6 +172,7 @@ impl RaytraceInputParser {
                 "panorama" => self.use_panoramic_lens(),
                 "xyz" => self.add_triangle_vertex(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "tri" => self.add_triangle(i32::from_str(tokens[1]).unwrap(), i32::from_str(tokens[2]).unwrap(), i32::from_str(tokens[3]).unwrap()),
+                "texture" => self.set_texture(tokens[1]),
                 "bulb" => self.add_bulb(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "shininess" => self.set_shininess(tokens[1..].iter().map(|e| String::from(*e)).collect()),
                 "aa" => self.set_antialias_value(u32::from_str(tokens[1]).unwrap()),
