@@ -4,7 +4,7 @@ use std::fs::File;
 use std::io::BufReader;
 
 use image::codecs::png::PngReader;
-use image::{Rgba, RgbaImage, Rgb, DynamicImage};
+use image::{Rgba, RgbaImage, Rgb, DynamicImage, Rgba32FImage};
 use crate::bulb::Bulb;
 use crate::shapes::{RayShape, Point};
 use crate::ray::{Ray, RayLensType};
@@ -29,7 +29,9 @@ pub struct RaytraceImage {
     pixels: HashMap<(usize, usize), Rgba<u8>>,
     exposure_value: Option<f64>,
     lens_type: RayLensType,
-    current_texture: Option<Vec<f32>>,
+    current_texture: Option<Rgba32FImage>,
+    current_texture_width: Option<f64>,
+    current_texture_height: Option<f64>,
     texture_coord: (f64, f64),
     triangle_verticies: Vec<TriangleCoordinate>,
     bulbs: Vec<Bulb>,
@@ -55,6 +57,8 @@ impl RaytraceImage {
             exposure_value: None,
             lens_type: RayLensType::Standard,
             current_texture: None,
+            current_texture_width: None,
+            current_texture_height: None,
             texture_coord: (0.0, 0.0),
             triangle_verticies: vec![],
             bulbs: vec![],
@@ -160,7 +164,9 @@ impl RaytraceImage {
     }
 
     pub fn add_sphere(&mut self, x_position: f64, y_position: f64, z_position: f64, radius: f64) {
-        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, self.current_texture.clone(), self.shininess);
+        let mut texture_width = self.current_texture_width;
+        let mut texture_height = self.current_texture_height;
+        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, &self.current_texture, self.shininess, texture_width, texture_height);
         self.shapes.push(Box::new(sphere));
     }
 
@@ -224,7 +230,7 @@ impl RaytraceImage {
         let first_point = &self.triangle_verticies[index1 as usize];
         let second_point = &self.triangle_verticies[index2 as usize];
         let third_point = &self.triangle_verticies[index3 as usize];
-        self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color, self.current_texture.clone())));
+        //self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color, self.current_texture.clone())));
     }
 
     pub fn set_texture(&mut self, texture_file: &str) {
@@ -235,9 +241,16 @@ impl RaytraceImage {
         match image::load(image_file, image::ImageFormat::Png) {
             Ok(tex) => {
                 println!("Loaded texture: {}", texture_file);
-                self.current_texture = Some(tex.into_rgba32f().to_vec());
+                println!("First pixel color: {:?}", tex.clone().to_rgba32f().get_pixel(0, 0));
+                self.current_texture = Some(tex.clone().to_rgba32f());
+                self.current_texture_width = Some(tex.width() as f64);
+                self.current_texture_height = Some(tex.height() as f64);
             },
-            Err(_) => self.current_texture = None,
+            Err(_) => {
+                self.current_texture = None;
+                self.current_texture_height = None;
+                self.current_texture_width = None;
+            },
         };
     }
 

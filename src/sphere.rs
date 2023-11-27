@@ -1,12 +1,17 @@
-use image::DynamicImage;
 
-use crate::{shapes::{Point, ShapeType, RayShape, self, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::Bulb};
+use std::f64::consts::PI;
+
+use image::Rgba32FImage;
+
+use crate::{shapes::{Point, ShapeType, RayShape, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::Bulb};
 
 pub struct Sphere {
     center: Point, 
     radius: f64,
     color: [f64; 4],
-    texture: Option<Vec<f32>>,
+    texture: Option<Rgba32FImage>,
+    texture_width: Option<f64>,
+    texture_height: Option<f64>,
     shininess: [f64; 3],
 }
 
@@ -88,13 +93,14 @@ impl RayShape for Sphere {
         match &self.texture {
             Some(tex) => {
                 if !in_shadow && bulbs.len() == 0 {
-                    //HELP
-                    let pixel_index = ((4.0 * intersection_point.x)) as usize;
-                    let new_red = tex[pixel_index] as f64;
-                    let new_green = tex[pixel_index + 1] as f64;
-                    let new_blue = tex[pixel_index + 2] as f64;
-                    let new_alpha = tex[pixel_index + 3] as f64;
-                    return [new_red, new_green, new_blue, new_alpha];
+                    let longitude = normal.x.atan2(normal.z);
+                    let latitude = normal.y.atan2((normal.x.powi(2) + normal.z.powi(2)).sqrt());
+                    let pixel = tex.get_pixel((longitude * (self.texture_width.unwrap() - 1.0)).floor() as u32, (latitude * (self.texture_height.unwrap() - 1.0)).floor() as u32);
+                    let tex_color_red = pixel.0[0] as f64;
+                    let tex_color_green = pixel.0[1] as f64;
+                    let tex_color_blue = pixel.0[2] as f64;
+                    let tex_color_alpha = pixel.0[3] as f64;
+                    return [tex_color_red, tex_color_green, tex_color_blue, tex_color_alpha];
                 }
             },
             None => {
@@ -132,12 +138,17 @@ impl RayShape for Sphere {
 }
 
 impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], texture: Option<Vec<f32>>, shininess: [f64; 3]) -> Self {
+    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], texture: &Option<Rgba32FImage>, shininess: [f64; 3], texture_width: Option<f64>, texture_height: Option<f64>) -> Self {
+        if let Some(t) = &texture {
+            println!("I should have a texture");
+        }
         Self {
             center: Point::new(x, y, z),
             radius,
             color,
-            texture,
+            texture: texture.clone(),
+            texture_width,
+            texture_height,
             shininess
         }
     }
