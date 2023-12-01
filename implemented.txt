@@ -1,4 +1,7 @@
 exposure
 suns
+camera
 plane
 triangle
+map
+barycentric

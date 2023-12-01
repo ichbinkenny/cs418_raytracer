@@ -131,6 +131,12 @@ impl RaytraceInputParser {
         }
     }
 
+    fn set_texture_coords(&mut self, x: f64, y: f64) {
+        if let Some(image) = self.image.as_mut() {
+            image.set_texture_coords(x, y);
+        }
+    }
+
     fn add_bulb(&mut self, x: f64, y: f64, z: f64) {
         if let Some(image) = self.image.as_mut() {
             image.add_bulb(x, y, z);
@@ -155,6 +161,13 @@ impl RaytraceInputParser {
         }
     }
 
+    fn set_reflection_bounces(&mut self, num_bounces: u32) {
+        if let Some(image) = self.image.as_mut() {
+            println!("Setting bounces to : {}", num_bounces);
+            image.set_reflection_bounces(num_bounces);
+        }
+    }
+
     fn parse_command(&mut self, command: &str) {
         let tokens: Vec<&str> = command.split(' ').filter(|e| { *e != "" }).collect();
         if tokens.len() > 0 {
@@ -173,8 +186,10 @@ impl RaytraceInputParser {
                 "xyz" => self.add_triangle_vertex(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "tri" => self.add_triangle(i32::from_str(tokens[1]).unwrap(), i32::from_str(tokens[2]).unwrap(), i32::from_str(tokens[3]).unwrap()),
                 "texture" => self.set_texture(tokens[1]),
+                "texcoord" => self.set_texture_coords(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap()),
                 "bulb" => self.add_bulb(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "shininess" => self.set_shininess(tokens[1..].iter().map(|e| String::from(*e)).collect()),
+                "bounces" => self.set_reflection_bounces(u32::from_str(tokens[1]).unwrap()),
                 "aa" => self.set_antialias_value(u32::from_str(tokens[1]).unwrap()),
                 _ => {},
             }

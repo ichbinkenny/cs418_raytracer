@@ -8,6 +8,7 @@ mod sun;
 mod plane;
 mod triangle;
 mod bulb;
+mod rgba_utils;
 
 use std::env::args;
 use input_parser::RaytraceInputParser;

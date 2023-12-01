@@ -6,6 +6,7 @@ use std::io::BufReader;
 use image::codecs::png::PngReader;
 use image::{Rgba, RgbaImage, Rgb, DynamicImage, Rgba32FImage};
 use crate::bulb::Bulb;
+use crate::rgba_utils::RgbaUtil;
 use crate::shapes::{RayShape, Point};
 use crate::ray::{Ray, RayLensType};
 use crate::sphere::Sphere;
@@ -13,8 +14,6 @@ use crate::plane::Plane;
 use crate::triangle::{TriangleCoordinate, Triangle};
 use crate::vector3::Vector3;
 use crate::sun::Sun;
-
-const LINEAR_SRGB_CUTOFF: f64 = 0.0031308;
 
 pub struct RaytraceImage {
     filename: String,
@@ -36,7 +35,7 @@ pub struct RaytraceImage {
     triangle_verticies: Vec<TriangleCoordinate>,
     bulbs: Vec<Bulb>,
     shininess: [f64; 3],
-    bounces: u8,
+    bounces: u32,
     num_antialias_rays: u32,
 }
 
@@ -85,7 +84,7 @@ impl RaytraceImage {
                 for i in 0..self.shapes.len()  {
                     let s_x = (2.0 * x as f64 - self.image.width() as f64) / max;
                     let s_y = (self.image.height() as f64 - (2.0 * y as f64)) / max;
-                    let ray = Ray::new(self.forward_direction, self.up_direction, self.right_direction, self.ray_origin, s_x, s_y, self.lens_type);
+                    let ray = Ray::new(self.forward_direction, self.up_direction, self.right_direction, self.ray_origin, s_x, s_y, self.lens_type, self.bounces);
                     // For each shape at this pixel,
                     // Get the distance to intersection
                     // Choose the smallest intersection to be the color
@@ -94,7 +93,7 @@ impl RaytraceImage {
                         Some(data) => {
                             if !found_shape {
                                 if data.0.is_nan() {
-                                    //continue;
+                                    continue;
                                 }
                                 smallest_distance = data.0;
                                 found_shape = true;
@@ -105,13 +104,13 @@ impl RaytraceImage {
                                     color = [color[0] + next_color[0], color[1] + next_color[1], color[2] + next_color[2], next_color[3] + color[3]];
                                 }
                                 if self.suns.len() > 0 {
-                                    color = [(color[0]  as f64), (color[1]   as f64), (color[2] as f64), color[3] / self.suns.len() as f64];
+                                    color = [(color[0]  as f64), (color[1]   as f64), (color[2] as f64), color[3]];
                                 }
-                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_srgb(color, self.exposure_value));
+                                self.pixels.insert((x as usize, y as usize), RgbaUtil::linear_to_rgba(color, self.exposure_value));
                                 
-                            } else if data.0 < smallest_distance {
+                            } else if data.0 <= smallest_distance {
                                 if data.0.is_nan() {
-                                    //continue;
+                                    continue;
                                 }
                                 smallest_distance = data.0;
                                 let mut color = [0.0, 0.0, 0.0, 0.0];
@@ -122,7 +121,7 @@ impl RaytraceImage {
                                 if self.suns.len() > 0 {
                                     color = [(color[0] / self.suns.len() as f64), (color[1]  / self.suns.len() as f64), (color[2] / self.suns.len() as f64), color[3] / self.suns.len() as f64];
                                 }
-                                self.pixels.insert((x as usize, y as usize), RaytraceImage::linear_color_to_srgb(color, self.exposure_value));
+                                self.pixels.insert((x as usize, y as usize), RgbaUtil::linear_to_rgba(color, self.exposure_value));
                             }
                         },
                         None => {
@@ -181,7 +180,6 @@ impl RaytraceImage {
 
     pub fn add_plane(&mut self, x: f64, y: f64, z: f64, d: f64) {
         let plane = Plane::new(x, y, z, d, self.current_color, self.shininess);
-        println!("Creating plane with color {:?}", self.current_color);
         self.shapes.push(Box::new(plane));
     }
 
@@ -213,6 +211,10 @@ impl RaytraceImage {
         self.triangle_verticies.push(TriangleCoordinate { x: x, y: y, z: z, s: self.texture_coord.0, t: self.texture_coord.1 });
     }
 
+    pub fn set_texture_coords(&mut self, x: f64, y: f64) {
+        self.texture_coord = (x, y);
+    }
+
     pub fn add_triangle(&mut self, i1: i32, i2: i32, i3: i32) {
         // We are using a 1 based index, with negative numbers meaning from the back of the triangle verticies vector.
         let mut index1 = i1;
@@ -230,10 +232,16 @@ impl RaytraceImage {
         let first_point = &self.triangle_verticies[index1 as usize];
         let second_point = &self.triangle_verticies[index2 as usize];
         let third_point = &self.triangle_verticies[index3 as usize];
-        //self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color, self.current_texture.clone())));
+        self.shapes.push(Box::new(Triangle::new(first_point, second_point, third_point, self.current_color, self.shininess, self.current_texture.clone())));
     }
 
     pub fn set_texture(&mut self, texture_file: &str) {
+        if texture_file == "none" {
+            self.current_texture = None;
+            self.current_texture_height = None;
+            self.current_texture_width = None;
+            return;
+        }
         let image_file = match std::fs::File::open(texture_file) {
             Ok(res) => BufReader::new(res),
             Err(_) => return,
@@ -247,6 +255,7 @@ impl RaytraceImage {
                 self.current_texture_height = Some(tex.height() as f64);
             },
             Err(_) => {
+                println!("HERE");
                 self.current_texture = None;
                 self.current_texture_height = None;
                 self.current_texture_width = None;
@@ -263,43 +272,13 @@ impl RaytraceImage {
         self.shininess = shininess;
     }
 
+    pub fn set_reflection_bounces(&mut self, bounces: u32) {
+        self.bounces = bounces;
+    }
+
     pub fn set_antialias_value(&mut self, num_rays: u32) {
         self.num_antialias_rays = num_rays;
     }
 
-    pub fn color_from_exposure(color: [f64; 4], exposure_value: f64) -> [f64; 4] {
-        let exposure_red = 1.0f64 - E.powf(-1.0f64 * exposure_value * color[0]);
-        let exposure_green = 1.0f64 - E.powf(-1.0f64 * exposure_value * color[1]);
-        let exposure_blue = 1.0f64 - E.powf(-1.0f64 * exposure_value * color[2]);
-        [exposure_red, exposure_green, exposure_blue, color[3]]
-    }
-
-    fn linear_color_to_srgb(color: [f64; 4], exposure_value: Option<f64>) -> Rgba<u8> {
-        // Check to see if we need to apply exposure
-        let mut linear_color = color;
-        if let Some(exposure) = exposure_value {
-            linear_color = RaytraceImage::color_from_exposure(linear_color, exposure);
-        }
-        let mut output_color = [0.0, 0.0, 0.0, linear_color[3]]; 
-        if linear_color[0] > LINEAR_SRGB_CUTOFF {
-            output_color[0] = 1.055 * (linear_color[0].powf(1.0 / 2.4)) - 0.055;
-        } else {
-            output_color[0] = 12.92 * linear_color[0];
-        }
-        if linear_color[1] > LINEAR_SRGB_CUTOFF {
-            output_color[1] = 1.055 * (linear_color[1].powf(1.0 / 2.4)) - 0.055;
-        } else {
-            output_color[1] = 12.92 * linear_color[1];
-        }
-        if linear_color[2] > LINEAR_SRGB_CUTOFF {
-            output_color[2] = 1.055 * (linear_color[2].powf(1.0 / 2.4)) - 0.055;
-        } else {
-            output_color[2] = 12.92 * linear_color[2];
-        }
-        let output_color_u8 = [(output_color[0] * 255.0).floor().min(255.0) as u8, (output_color[1] * 255.0).floor().min(255.0) as u8, (output_color[2] * 255.0).floor().min(255.0) as u8, 255.0 as u8];
-        return Rgba(output_color_u8);
-        // println!("Converted: {:?} to sRGB: {:x?}", linear_color, output_color_u8);
-        
-    } 
 
 }

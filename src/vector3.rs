@@ -1,8 +1,8 @@
-use std::ops::{Add, Sub, Mul, Neg};
+use std::ops::{Add, Sub, Mul, Neg, Div};
 
 use crate::shapes::Point;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Vector3 {
     pub x: f64,
     pub y: f64,
@@ -78,6 +78,13 @@ impl Mul<Vector3> for f64 {
     type Output = Vector3;
     fn mul(self, other: Vector3) -> Vector3 {
         Vector3::new(self * other.x, self * other.y, self * other.z)
+    }
+}
+
+impl Div<f64> for Vector3 {
+    type Output = Vector3;
+    fn div(self, rhs: f64) -> Self::Output {
+        Vector3::new(self.x / rhs, self.y / rhs, self.z / rhs)
     }
 }
 

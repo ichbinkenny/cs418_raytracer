@@ -16,14 +16,22 @@ impl RayShape for Plane {
     fn get_shape(&self) -> ShapeType {
         ShapeType::Plane
     }
-    fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)> {
+
+    fn equals(&self, rhs: &dyn std::any::Any) -> bool {
+        if let Some(other) = rhs.downcast_ref::<Plane>() {
+            return other.get_center() == self.get_center() && other.point == self.point && other.color == self.color;
+        }
+        false
+    }
+
+    fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point, [f64;3])> {
         let distance = self.point - ray.get_origin();
         let numerator = distance.to_vec().dot(self.normal);
         let denominator = ray.get_direction().dot(self.normal);
         let t = numerator / denominator;
         if t > 0.0 {
             let p_prime = (t * ray.get_direction() + ray.get_origin().to_vec()).to_point();
-            return Some((t, p_prime));
+            return Some((t, p_prime, [0.0, 0.0, 0.0]));
         }
         None
     }
@@ -61,11 +69,15 @@ impl RayShape for Plane {
     fn get_normal_at_intersection(&self, _intersection_point: &Point) -> Vector3 {
         self.normal
     }
+
+    fn get_shininess(&self) -> [f64; 3] {
+        self.shininess
+    }
 }
 
 impl Plane {
     pub fn new(x: f64, y: f64, z: f64, d: f64, color: [f64; 4], shininess: [f64; 3]) -> Self {
-        let point_from_eq = ((-d * Vector3::new(x, y, z)) * ( 1.0 / (x.powi(2) + y.powi(2) + z.powi(2)).sqrt())).to_point();
+        let point_from_eq = ((-d * Vector3::new(x, y, z).normalize()) * ( 1.0 / (x.powi(2) + y.powi(2) + z.powi(2)).sqrt())).to_point();
         Self{
             normal: Vector3::new(x, y, z).normalize(),
             point: point_from_eq,

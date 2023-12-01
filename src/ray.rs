@@ -19,7 +19,7 @@ pub struct Ray {
 }
 
 impl Ray {
-    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, origin: Point, s_x: f64, s_y: f64, lens_type: RayLensType) -> Self {
+    pub fn new(forward_dir: Vector3, up_dir: Vector3, right_dir: Vector3, origin: Point, s_x: f64, s_y: f64, lens_type: RayLensType, max_bounces: u32) -> Self {
         let ray_direction = match lens_type {
             RayLensType::Standard => forward_dir + (s_x * right_dir) + (s_y * up_dir),
             RayLensType::Fisheye => {
@@ -35,7 +35,7 @@ impl Ray {
             direction: ray_direction.normalize(),
             lens_type,
             generation: 0,
-            max_bounces: 4,
+            max_bounces,
         }
     }
     pub fn set_origin(&mut self, point: Point) {

@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub};
+use std::any::Any;
 
 use crate::bulb::Bulb;
 use crate::ray::Ray;
@@ -82,7 +83,9 @@ pub trait RayShape {
     fn get_shape(&self) -> ShapeType;
     fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, bulbs: &Vec<Bulb>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4];
     fn get_color_without_sun(&self) -> [f64; 4];
-    fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point)>;
+    fn get_intersection(&self, ray: &Ray) -> Option<(f64, Point, [f64;3])>;
     fn get_normal_at_intersection(&self, intersection_point: &Point) -> Vector3;
+    fn get_shininess(&self) -> [f64; 3];
+    fn equals(&self, other: &dyn Any) -> bool;
 }
 
