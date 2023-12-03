@@ -36,6 +36,8 @@ pub struct RaytraceImage {
     bulbs: Vec<Bulb>,
     shininess: [f64; 3],
     bounces: u32,
+    transparency: [f64; 3],
+    index_of_refraction: f64,
     num_antialias_rays: u32,
 }
 
@@ -63,6 +65,8 @@ impl RaytraceImage {
             bulbs: vec![],
             shininess: [0.0, 0.0, 0.0],
             bounces: 4,
+            transparency: [0.0, 0.0, 0.0],
+            index_of_refraction: 1.458,
             num_antialias_rays: 0,
         }
     }
@@ -165,7 +169,7 @@ impl RaytraceImage {
     pub fn add_sphere(&mut self, x_position: f64, y_position: f64, z_position: f64, radius: f64) {
         let mut texture_width = self.current_texture_width;
         let mut texture_height = self.current_texture_height;
-        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, &self.current_texture, self.shininess, texture_width, texture_height);
+        let sphere = Sphere::new(x_position, y_position, z_position, radius, self.current_color, &self.current_texture, self.shininess, self.transparency, self.index_of_refraction, texture_width, texture_height);
         self.shapes.push(Box::new(sphere));
     }
 
@@ -278,6 +282,14 @@ impl RaytraceImage {
 
     pub fn set_antialias_value(&mut self, num_rays: u32) {
         self.num_antialias_rays = num_rays;
+    }
+
+    pub fn set_transparency(&mut self, transparency: [f64; 3]) {
+        self.transparency = transparency;
+    }
+
+    pub fn set_index_of_refraction(&mut self, ior: f64) {
+        self.index_of_refraction = ior;
     }
 
 

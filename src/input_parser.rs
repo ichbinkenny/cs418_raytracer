@@ -155,16 +155,33 @@ impl RaytraceInputParser {
         }
     }
 
-    fn set_antialias_value(&mut self, num_rays: u32) {
-        if let Some(image) = self.image.as_mut() {
-            image.set_antialias_value(num_rays);
-        }
-    }
-
     fn set_reflection_bounces(&mut self, num_bounces: u32) {
         if let Some(image) = self.image.as_mut() {
             println!("Setting bounces to : {}", num_bounces);
             image.set_reflection_bounces(num_bounces);
+        }
+    }
+
+    fn set_transparency(&mut self, values: Vec<String>) {
+        if let Some(image) = self.image.as_mut() {
+            if values.len() == 1 {
+                let transparency = f64::from_str(values[0].as_str()).unwrap();
+                image.set_transparency([transparency, transparency, transparency]);
+            } else {
+                image.set_transparency([f64::from_str(values[0].as_str()).unwrap(), f64::from_str(values[1].as_str()).unwrap(), f64::from_str(values[2].as_str()).unwrap()]);
+            }
+        }
+    }
+
+    fn set_index_of_refraction(&mut self, ior: f64) {
+        if let Some(image) = self.image.as_mut() {
+            image.set_index_of_refraction(ior);
+        }
+    }
+
+    fn set_antialias_value(&mut self, num_rays: u32) {
+        if let Some(image) = self.image.as_mut() {
+            image.set_antialias_value(num_rays);
         }
     }
 
@@ -190,6 +207,8 @@ impl RaytraceInputParser {
                 "bulb" => self.add_bulb(f64::from_str(tokens[1]).unwrap(), f64::from_str(tokens[2]).unwrap(), f64::from_str(tokens[3]).unwrap()),
                 "shininess" => self.set_shininess(tokens[1..].iter().map(|e| String::from(*e)).collect()),
                 "bounces" => self.set_reflection_bounces(u32::from_str(tokens[1]).unwrap()),
+                "transparency" => self.set_transparency(tokens[1..].iter().map(|e| String::from(*e)).collect()),
+                "ior" => self.set_index_of_refraction(f64::from_str(tokens[1]).unwrap()),
                 "aa" => self.set_antialias_value(u32::from_str(tokens[1]).unwrap()),
                 _ => {},
             }

@@ -3,7 +3,7 @@ use std::{f64::consts::PI, any::Any};
 
 use image::Rgba32FImage;
 
-use crate::{shapes::{Point, ShapeType, RayShape, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::Bulb, rgba_utils::RgbaUtil};
+use crate::{shapes::{Point, ShapeType, RayShape, MIN_ALLOWED_COLLISION_DISTANCE}, ray::Ray, sun::Sun, vector3::Vector3, bulb::{Bulb, self}, rgba_utils::RgbaUtil};
 
 pub struct Sphere {
     center: Point, 
@@ -13,6 +13,8 @@ pub struct Sphere {
     texture_width: Option<f64>,
     texture_height: Option<f64>,
     shininess: [f64; 3],
+    transparency: [f64; 3],
+    index_of_refraction: f64,
 }
 
 impl RayShape for Sphere {
@@ -67,6 +69,7 @@ impl RayShape for Sphere {
     /// 
     fn get_linear_color(&self, objects: &Vec<Box<dyn RayShape>>, bulbs: &Vec<Bulb>, ray: &Ray, sun: &Sun, intersection_point: &Point) -> [f64; 4] {
         if ray.generation > ray.max_bounces {
+            println!("Hit max bounce of : {}", ray.generation);
             return [0.0, 0.0, 0.0, 1.0];
         }
         let intersection_info = self.get_intersection(ray).unwrap();
@@ -131,13 +134,13 @@ impl RayShape for Sphere {
                     let mut new_red = self.color[0] * sun.get_color()[0] * lambert;
                     let mut new_green = self.color[1] * sun.get_color()[1] * lambert; 
                     let mut new_blue = self.color[2] * sun.get_color()[2] * lambert;
-                    let reflection_direction = ray.direction - (2.0 * ray.direction.dot(normal) * normal);
-                    let reflection_ray = Ray {origin: intersection_info.1 + (normal * 0.01), direction: reflection_direction, lens_type: ray.lens_type, generation: ray.generation + 1, max_bounces: ray.max_bounces};
+                    let reflection_direction = ray.direction - (2.0 * (normal.dot(ray.direction)) * normal);
+                    let reflection_ray = Ray {origin: intersection_info.1, direction: reflection_direction, lens_type: ray.lens_type, generation: ray.generation + 1, max_bounces: ray.max_bounces};
                     let diffuse_factor = [1.0 - self.shininess[0], 1.0 - self.shininess[1], 1.0 - self.shininess[2], 0.0];
                     let mut color = [new_red * diffuse_factor[0], new_green * diffuse_factor[1], new_blue * diffuse_factor[2], self.color[3]];
                     // Find next shape for color
                     let mut min_t = f64::MAX;
-                    let mut reflection_point = intersection_info.1 + (normal * 0.01);
+                    let mut reflection_point = intersection_info.1;
                     let mut hit_shape = None;
                     for obj in objects {
                         if let Some(hit_info) = obj.get_intersection(&reflection_ray) {
@@ -158,10 +161,11 @@ impl RayShape for Sphere {
                 }
                 else if bulbs.len() > 0 {
                     // Get our ratio of reflected light to diffused.
-                    let new_red = (self.color[0] * sun.get_color()[0] * lambert) * (bulb_color[0]);
-                    let new_green = (self.color[1] * sun.get_color()[1] * lambert) * (bulb_color[1]); 
-                    let new_blue = (self.color[2] * sun.get_color()[2] * lambert) * (bulb_color[2]);
-                    return [new_red, new_green, new_blue, self.color[3]];
+
+                        let new_red = (self.color[0] * (sun.get_color()[0] + bulb_color[0]) * lambert) ;
+                        let new_green = (self.color[1] * (sun.get_color()[1] + bulb_color[1]) * lambert); 
+                        let new_blue = (self.color[2] * (sun.get_color()[2] + bulb_color[2]) * lambert);
+                        return [new_red, new_green, new_blue, self.color[3]];
                 }
             }
         }
@@ -182,10 +186,7 @@ impl RayShape for Sphere {
 }
 
 impl Sphere {
-    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], texture: &Option<Rgba32FImage>, shininess: [f64; 3], texture_width: Option<f64>, texture_height: Option<f64>) -> Self {
-        if let Some(t) = &texture {
-            println!("I should have a texture");
-        }
+    pub fn new(x: f64, y: f64, z: f64, radius: f64, color: [f64; 4], texture: &Option<Rgba32FImage>, shininess: [f64; 3], transparency: [f64;3], index_of_refraction: f64, texture_width: Option<f64>, texture_height: Option<f64>) -> Self {
         Self {
             center: Point::new(x, y, z),
             radius,
@@ -193,7 +194,9 @@ impl Sphere {
             texture: texture.clone(),
             texture_width,
             texture_height,
-            shininess
+            shininess,
+            transparency,
+            index_of_refraction,
         }
     }
 }
